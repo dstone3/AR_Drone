@@ -1,5 +1,9 @@
 import time, sys
 import ps_drone                                    # Import PS-Drone-API
+import numpy as np
+import cv2
+import math
+
 
 def findObject(image):
 
