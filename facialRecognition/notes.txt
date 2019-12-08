@@ -1,0 +1,1 @@
+1. Extract embeddings uses a deep learning model and not the HaarCascade method, this could cause a problem because the new video detection algorithm uses HaarCascade and not the deep learning model.

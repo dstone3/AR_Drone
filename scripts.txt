@@ -1,0 +1,10 @@
+## source olympe-python3
+source ~/code/parrot-groundsdk/./products/olympe/linux/env/shell
+## start simulation
+
+sudo systemctl start firmwared
+sphinx /opt/parrot-sphinx/usr/share/sphinx/drones/anafi4k.drone::stolen_interface=::simple_front_cam=true
+
+
+192.168.42.1 for drone
+192.168.53.1 for skycontroller
