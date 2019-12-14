@@ -135,16 +135,10 @@ class ourDrone:
 stop = False
 
 while not stop:
-   
+
+    img = drone.videoImage
+
     thisDrone = ourDrone()
     thisDrone.startVideo()
-    thisDrone.followPerson()
-    #cv2.imshow("testFrame", img)
+    thisDrone.followPerson(img)
     
-    trackPerson(img)
-    
-#    cv2.imshow("Frame", img)
-
-    #cv2.waitKey(1) 
-    
-    ## move drone based off image here
