@@ -16,5 +16,5 @@ while True:
     if drone.drone.getKey():
         sys.exit()
 
-    # move
+    # move the drone
 
