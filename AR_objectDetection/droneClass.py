@@ -28,14 +28,16 @@ class ourDrone:
         while (self.drone.getBattery()[0]==-1): time.sleep(0.1) # Wait until drone has done its reset
         print "Battery: "+str(self.drone.getBattery()[0])+"% "+str(self.drone.getBattery()[1]) # Battery-status
         self.drone.useDemoMode(True) # Set 15 basic dataset/sec
+        #self.takeOff()
 
         ##### Variables for states #####
-        self.search = True
+        self.object_flag = False
+        self.cnt = 0
 
         ##### Mainprogram begin #####
         self.drone.setConfigAllID() # Go to multiconfiguration-mode
         self.drone.hdVideo()
-        self.drone.groundCam()  # Choose ground view, alternative is frontCam()
+        self.drone.frontCam()  # Choose ground view, alternative is frontCam()
         CDC = self.drone.ConfigDataCount
         while CDC==self.drone.ConfigDataCount: time.sleep(0.001) # Wait until it is done (after resync)
 
@@ -49,18 +51,18 @@ class ourDrone:
         print("Drone initialization complete")
 
     def startVideo(self):
-        drone.startVideo()
+        self.drone.startVideo()
         #drone.showVideo()
         
-        IMC =    drone.VideoImageCount # Number of encoded videoframes
+        self.IMC =    self.drone.VideoImageCount # Number of encoded videoframes
         time.sleep(5)
         print("Video stream started")
 
-    def trackColor(self, img):
+    def trackColor(self, frame):
         
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
-        lower_red = np.array([0, 75, 40]) 
-        upper_red = np.array([20, 255, 255]) 
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
+        lower_red = np.array([30, 100, 20]) 
+        upper_red = np.array([50, 255, 255]) 
   
         
         mask = cv2.inRange(hsv, lower_red, upper_red) 
@@ -70,13 +72,16 @@ class ourDrone:
         #cv2.imshow('res',res)
     
         contours, hier = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-
-        cont = max(contours, key = cv2.contourArea)
+        if(len(contours) != 0):
+            self.object_flag = True
+            cont = max(contours, key = cv2.contourArea)
     
-        (x,y,w,h) = cv2.boundingRect(cont)
+            (x,y,w,h) = cv2.boundingRect(cont)
 
-        self.objBox = (x,y,w+x,h+y)
-        cv2.rectangle(frame, (x,y),(x+w,y+h),0,-1)
+            self.objBox = (x,y,w+x,h+y)
+            cv2.rectangle(frame, (x,y),(x+w,y+h),(255,0,0),2)
+        else:
+            self.object_flag = False
         
         self.imgW = 600
         self.imgH = 600
@@ -178,24 +183,30 @@ class ourDrone:
         self.drone.move(side, front, vertical, turn)
 
     def center(self):
-        img = self.drone.videoImage
+        # Object Detection
+        img = self.drone.VideoImage
         self.trackColor(img)
 
-        #compute center
+        # compute center and speeds
         x = ( self.objBox[0] + self.objBox[2] ) / 2.0
         y = ( self.objBox[1] + self.objBox[3] ) / 2.0
-        x_error = x - 320
-        y_error =  180 - y
+        x_error = x - 630
+        y_error =  360 - y
         max_speed = 0.3
-        x_speed = max_speed * x_error / 320.0
-        y_speed = max_speed * y_error / 180.0
+        x_speed = max_speed * x_error / 630.0
+        y_speed = max_speed * y_error / 360.0
 
-        # print statement
-        print ("x: ", x_speed, "y: ", y_speed)
-
-        #move drone
-        #self.drone.move(x_speed, y_speed, 0, 0)
-
+        # print  and move statement
+        if (self.cnt == 1):
+            if self.object_flag:
+                #print ("x: ", x_speed, "y: ", y_speed)
+                print ("x: ", self.objBox[0], "y: ", self.objBox[1])
+                #self.drone.move(x_speed, 0, y_speed, 0)
+            else:
+                print ("No object")
+        elif (self.cnt >= 20):
+            self.cnt = 0
+        self.cnt = self.cnt + 1
 
 
     def foundAlgorithm(self):
@@ -213,7 +224,11 @@ class ourDrone:
         
         
     def takeOff(self):
-        x=1
+        self.drone.getNDpackage(["demo"])
+        time.sleep(0.5)
+        self.drone.takeoff()
+        while self.drone.NavData["demo"][0][2]: 
+            time.sleep(0.1) # Wait until drone is completely flying
 
 
     
@@ -224,11 +239,15 @@ if __name__ == '__main__':
 
     thisDrone = ourDrone()
     thisDrone.startVideo()
-    #thisDrone.takeOff()
 
     while not stop:
         #img = drone.videoImage
         #thisDrone.followPerson(img) ## call sample object detection method
         #thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
 
+        # center drone on object
         thisDrone.center()
+
+        # emergency stop
+        if thisDrone.drone.getKey():
+            sys.exit()
