@@ -37,7 +37,11 @@ class ourDrone:
         while (self.drone.getBattery()[0]==-1): time.sleep(0.1) # Wait until drone has done its reset
         print "Battery: "+str(self.drone.getBattery()[0])+"% "+str(self.drone.getBattery()[1]) # Battery-status
         self.drone.useDemoMode(True) # Set 15 basic dataset/sec
-        #self.drone.takeOff()
+        self.takeOff()
+
+        ##### Variables for States #####
+        self.object_flag = False
+        self.cnt = 0
 
         ##### Mainprogram begin #####
         self.drone.setConfigAllID() # Go to multiconfiguration-mode
@@ -116,10 +120,13 @@ class ourDrone:
                 
 	    # draw the bounding box of the face along with the
 	    # associated probability
-            print("Name = ", name)
+            #print("Name = ", name)
             if(name == "Adam Sandler"):
+                self.object_flag = True
                 self.objBox = (x, y, x+w, y+h)
-                print(self.objBox)
+                #print(self.objBox)
+            else:
+                self.object_flag = False
                 
             text = "{}: {:.2f}%".format(name, proba * 100)
 		
@@ -274,18 +281,19 @@ class ourDrone:
         # print  and move statement
         if (self.cnt == 1):
             if self.object_flag:
-                #print ("x: ", x_speed, "y: ", y_speed)
-                print ("x: ", self.objBox[0], "y: ", self.objBox[1])
-                #self.drone.move(x_speed, 0, y_speed, 0)
+                print ("x: ", x_speed, "y: ", y_speed)
+                #print ("x: ", self.objBox[0], "y: ", self.objBox[1])
+                self.drone.move(x_speed, y_speed, 0, 0)
             else:
                 print ("No object")
-        elif (self.cnt >= 20):
+        elif (self.cnt >= 5):
             self.cnt = 0
         self.cnt = self.cnt + 1
 
 
     def takeOff(self):
-        self.drone.getNDpackage(["demo"])
+        self.drone.groundCam()
+        #self.drone.getNDpackage(["demo"])
         time.sleep(0.5)
         self.drone.takeoff()
         while self.drone.NavData["demo"][0][2]: 
@@ -302,14 +310,38 @@ if __name__ == '__main__':
     thisDrone = ourDrone()
     thisDrone.startVideo()
 
+    # centering flag
+    center_flag = False
+
     while not stop:
         #img = drone.videoImage
         #thisDrone.followPerson(img) ## call sample object detection method
         #thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
 
-        # center drone on object
-        thisDrone.center()
-
-        # emergency stop
-        if thisDrone.drone.getKey():
+        # key control
+        key = thisDrone.drone.getKey()
+        if key == "0":
+            thisDrone.drone.hover()
+            center_flag = False
+        elif key == "w":
+            thisDrone.drone.moveForward()
+        elif key == "s":
+            thisDrone.drone.moveBackward()
+        elif key == "a":
+            thisDrone.drone.moveLeft()
+        elif key == "d":
+            thisDrone.drone.moveRight()
+        elif key == "8":
+            drone.moveUp()
+        elif key == "2":
+            drone.moveDown()
+        elif key == "c":
+            center_flag = True
+        elif key == " ":
             sys.exit()
+	
+
+        # center drone on object
+        if center_flag:
+            thisDrone.center()
+
