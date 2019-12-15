@@ -181,7 +181,7 @@ class ourDrone:
         objY = (self.objBox[3] - self.objBox[1]) / 2 / self.imgH
         
         pickupX = 50 / self.imgW ## experimental value, so needs to be changed
-        pickupY = self.imgH / 2
+        pickupY = self.imgH / 2 ## horizon line
         
         
         
@@ -189,13 +189,14 @@ class ourDrone:
         
 stop = False
 
+thisDrone = ourDrone()
+thisDrone.startVideo()
+thisDrone.takeOff()
+
 while not stop:
 
     img = drone.videoImage
 
-    thisDrone = ourDrone() ## initialize drone local variables
-    thisDrone.startVideo() ## start drone video, makes image object accessable
-    thisDrone.takeOff() ## take off and hover in place
-    
+            
     thisDrone.followPerson(img) ## call sample object detection method
     thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
