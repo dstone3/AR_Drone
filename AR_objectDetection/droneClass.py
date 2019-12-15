@@ -177,9 +177,26 @@ class ourDrone:
     def move(self, side, front, vertical, turn):
         self.drone.move(side, front, vertical, turn)
 
-    def search(self):
-        while search:
-            _ = 1
+    def center(self):
+        img = self.drone.videoImage
+        self.trackColor(img)
+
+        #compute center
+        x = ( self.objBox[0] + self.objBox[2] ) / 2.0
+        y = ( self.objBox[1] + self.objBox[3] ) / 2.0
+        x_error = x - 320
+        y_error =  180 - y
+        max_speed = 0.3
+        x_speed = max_speed * x_error / 320.0
+        y_speed = max_speed * y_error / 180.0
+
+        # print statement
+        print ("x: ", x_speed, "y: ", y_speed)
+
+        #move drone
+        #self.drone.move(x_speed, y_speed, 0, 0)
+
+
 
     def foundAlgorithm(self):
         ## Make movements based off on object's box location
@@ -196,7 +213,7 @@ class ourDrone:
         
         
     def takeOff(self):
-        
+        x=1
 
 
     
@@ -207,10 +224,11 @@ if __name__ == '__main__':
 
     thisDrone = ourDrone()
     thisDrone.startVideo()
-    thisDrone.takeOff()
+    #thisDrone.takeOff()
 
     while not stop:
-        img = drone.videoImage
+        #img = drone.videoImage
+        #thisDrone.followPerson(img) ## call sample object detection method
+        #thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
 
-        thisDrone.followPerson(img) ## call sample object detection method
-        thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
+        thisDrone.center()
