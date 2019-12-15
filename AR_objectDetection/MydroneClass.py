@@ -37,6 +37,7 @@ class ourDrone:
         while (self.drone.getBattery()[0]==-1): time.sleep(0.1) # Wait until drone has done its reset
         print "Battery: "+str(self.drone.getBattery()[0])+"% "+str(self.drone.getBattery()[1]) # Battery-status
         self.drone.useDemoMode(True) # Set 15 basic dataset/sec
+        #self.drone.takeOff()
 
         ##### Mainprogram begin #####
         self.drone.setConfigAllID() # Go to multiconfiguration-mode
@@ -254,23 +255,61 @@ class ourDrone:
             ## move drone by objX - .5 and rotate drone by ?    
 
         time.sleep(2) ## give drone time to move
+
+
+    def center(self):
+        # Object Detection
+        img = self.drone.VideoImage
+        self.findAdam(img)
+
+        # compute center and speeds
+        x = ( self.objBox[0] + self.objBox[2] ) / 2.0
+        y = ( self.objBox[1] + self.objBox[3] ) / 2.0
+        x_error = x - 630
+        y_error =  360 - y
+        max_speed = 0.3
+        x_speed = max_speed * x_error / 630.0
+        y_speed = max_speed * y_error / 360.0
+
+        # print  and move statement
+        if (self.cnt == 1):
+            if self.object_flag:
+                #print ("x: ", x_speed, "y: ", y_speed)
+                print ("x: ", self.objBox[0], "y: ", self.objBox[1])
+                #self.drone.move(x_speed, 0, y_speed, 0)
+            else:
+                print ("No object")
+        elif (self.cnt >= 20):
+            self.cnt = 0
+        self.cnt = self.cnt + 1
+
+
+    def takeOff(self):
+        self.drone.getNDpackage(["demo"])
+        time.sleep(0.5)
+        self.drone.takeoff()
+        while self.drone.NavData["demo"][0][2]: 
+            time.sleep(0.1) # Wait until drone is completely flying
+
+
+
+
         
-    
-        
-stop = False
+## main function
+if __name__ == '__main__':
+    stop = False
 
+    thisDrone = ourDrone()
+    thisDrone.startVideo()
 
-thisDrone = ourDrone()
-thisDrone.startVideo()
-#thisDrone.takeOff()
+    while not stop:
+        #img = drone.videoImage
+        #thisDrone.followPerson(img) ## call sample object detection method
+        #thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
 
-while not stop:
+        # center drone on object
+        thisDrone.center()
 
-    img = thisDrone.drone.VideoImage
-
-    thisDrone.findAdam(img)
-    #thisDrone.trackColor(img) ## call sample object detection method
-    #thisDrone.foundAlgorithm() ## Move drone...drone should take off before this..?
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord("q"):
-        break
+        # emergency stop
+        if thisDrone.drone.getKey():
+            sys.exit()
