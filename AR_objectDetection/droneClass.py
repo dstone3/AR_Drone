@@ -29,6 +29,9 @@ class ourDrone:
         print "Battery: "+str(self.drone.getBattery()[0])+"% "+str(self.drone.getBattery()[1]) # Battery-status
         self.drone.useDemoMode(True) # Set 15 basic dataset/sec
 
+        ##### Variables for states #####
+        self.search = True
+
         ##### Mainprogram begin #####
         self.drone.setConfigAllID() # Go to multiconfiguration-mode
         self.drone.hdVideo()
@@ -170,7 +173,14 @@ class ourDrone:
 			cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLORS[idx], 2)
         cv2.imshow("Frame", frame)
         key = cv2.waitKey(1) & 0xFF      
-    
+
+    def move(self, side, front, vertical, turn):
+        self.drone.move(side, front, vertical, turn)
+
+    def search(self):
+        while search:
+            _ = 1
+
     def foundAlgorithm(self):
         ## Make movements based off on object's box location
         ## Algorithm assumes camera is ground camera
@@ -187,16 +197,20 @@ class ourDrone:
         
     def takeOff(self):
         
-stop = False
 
-thisDrone = ourDrone()
-thisDrone.startVideo()
-thisDrone.takeOff()
 
-while not stop:
+    
 
-    img = drone.videoImage
+## main function
+if __name__ == '__main__':
+    stop = False
 
-            
-    thisDrone.followPerson(img) ## call sample object detection method
-    thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
+    thisDrone = ourDrone()
+    thisDrone.startVideo()
+    thisDrone.takeOff()
+
+    while not stop:
+        img = drone.videoImage
+
+        thisDrone.followPerson(img) ## call sample object detection method
+        thisDrone.moveAlgorithm() ## Move drone...drone should take off before this..?
