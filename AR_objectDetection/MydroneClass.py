@@ -42,13 +42,19 @@ class ourDrone:
         ##### Variables for States #####
         self.object_flag = False
         self.cnt = 0
+        self.x_int = 0
+        self.y_int = 0
+        self.w_int = 0
+        self.x_old = 0
+        self.y_old = 0
+        self.w_old = 0
 
         ##### Mainprogram begin #####
         self.drone.setConfigAllID() # Go to multiconfiguration-mode
         self.drone.hdVideo()
-        self.drone.groundCam()  # Choose ground view, alternative is frontCam()
+        self.drone.frontCam()  # Choose ground view, alternative is frontCam()
         CDC = self.drone.ConfigDataCount
-        while CDC==self.drone.ConfigDataCount: time.sleep(0.001) # Wait until it is done (after resync)
+        while CDC==self.drone.ConfigDataCount or self.drone.getKey(): time.sleep(0.001) # Wait until it is done (after resync)
 
         self.IMC = None
         self.stop = False
@@ -274,7 +280,7 @@ class ourDrone:
         y = ( self.objBox[1] + self.objBox[3] ) / 2.0
         x_error = x - 630
         y_error =  360 - y
-        max_speed = 0.3
+        max_speed = 0.8
         x_speed = max_speed * x_error / 630.0
         y_speed = max_speed * y_error / 360.0
 
@@ -284,15 +290,139 @@ class ourDrone:
                 print ("x: ", x_speed, "y: ", y_speed)
                 #print ("x: ", self.objBox[0], "y: ", self.objBox[1])
                 self.drone.move(x_speed, y_speed, 0, 0)
+                time.sleep(0.1)
             else:
                 print ("No object")
-        elif (self.cnt >= 5):
+        elif (self.cnt >= 2):
             self.cnt = 0
         self.cnt = self.cnt + 1
 
+    ## Main function to detect and navigate towards the object
+    def testMove(self, xpos, ypos):
+        # image detection
+        img = self.drone.VideoImage
+        self.findAdam(img)
+
+        # compute center and speeds
+        x = ( self.objBox[0] + self.objBox[2] ) / 2.0
+        y = ( self.objBox[1] + self.objBox[3] ) / 2.0
+        width = self.objBox[2] - self.objBox[0] 
+        x_error = (x - 320) * (x - 320) * (x - 320)
+        y_error = (180 - y) * (180 - y) * (180 - y)
+        max_speed = 0.3
+        x_speed = max_speed * x_error / 32768000.0
+        y_speed = max_speed * y_error / 5832000.0
+        x_speed = round(x_speed, 2)
+        y_speed = round(y_speed, 2)
+
+        # move drone
+        if not self.object_flag:
+            print "Searching!"
+            self.drone.move(0,0,0,0.2)
+        elif self.object_flag:
+            print 'x: ', x_speed, 'y: ', y_speed
+            self.drone.move(0, 0.04, y_speed, x_speed)
+            if width >= 70:
+                self.drone.stop()
+                time.sleep(0.1)
+                self.drone.move(0,0,-0.3,0)
+                time.sleep(1.5)
+                self.drone.move(0,0,0.3,0)
+                time.sleep(1.5)
+                self.drone.move(0,-0.2,0,0)
+                time.sleep(1)
+                sys.exit()
+
+        # sleep
+        time.sleep(0.02)
+
+    ## test funciton for PID control
+    def PIDMove(self):
+        # image detection
+        img = self.drone.VideoImage
+        self.findAdam(img)
+
+        # compute center and speeds
+        x = ( self.objBox[0] + self.objBox[2] ) / 2.0
+        y = ( self.objBox[1] + self.objBox[3] ) / 2.0
+        width = self.objBox[2] - self.objBox[0] 
+        x_error = x - 320
+        y_error = 180 - y
+        w_error = 70 - width
+        max_speed = 0.3
+        #x_speed = max_speed * x_error / 32768000.0
+        #y_speed = max_speed * y_error / 5832000.0
+        #x_speed = round(x_speed, 2)
+        #y_speed = round(y_speed, 2)
+
+        #proportional
+        prop = 0.2
+        xp = prop * x_error / 320.0
+        yp = prop * y_error / 180.0
+        wp = prop * w_error / 70.0
+
+        #integral
+        integ = 0.02
+        self.x_int = self.x_int + x_error
+        self.y_int = self.y_int + y_error
+        self.w_int = self.w_int + w_error
+        if (self.x_int >= 2000):
+            x_int = 2000
+        elif (self.x_int <= -2000):
+            x_int = -2000
+        if (self.y_int >= 1200):
+            y_int = 1200
+        elif (self.y_int <= -1200):
+            y_int = -1200
+        if (self.w_int >= 400):
+            w_int = 400
+        elif (self.w_int <= -400):
+            w_int = -400
+        xi = integ * self.x_int / 320.0
+        yi = integ * self.y_int / 180.0
+        wi = integ * self.w_int / 70.0
+
+        #derivative
+        der = 0.2
+        xdc = x_error - self.x_old
+        ydc = y_error - self.y_old
+        wdc = w_error - self.w_old
+        self.x_old = x_error
+        self.y_olf = y_error
+        self.w_old = w_error
+        xd = der * xdc / 320.0
+        yd = der * ydc / 180.0
+        wd = der * wdc / 70.0
+
+        #speed
+        x_speed = xp + xi + xd
+        y_speed = yp + yi + yd
+        w_speed = wp + wi + wd
+
+        # move drone
+        if not self.object_flag:
+            print "Searching!"
+            self.drone.move(0,0,0,0.2)
+        elif self.object_flag:
+            print 'x: ', x_speed, 'y: ', y_speed
+            self.drone.move(0, w_speed, y_speed, x_speed)
+            if width >= 200:
+                self.drone.stop()
+                time.sleep(0.1)
+                self.drone.move(0,0,-0.3,0)
+                time.sleep(1.5)
+                self.drone.move(0,0,0.3,0)
+                time.sleep(1.5)
+                self.drone.move(0,-0.2,0,0)
+                time.sleep(1)
+                sys.exit()
+
+        # sleep
+        time.sleep(0.02)
+
+
 
     def takeOff(self):
-        self.drone.groundCam()
         #self.drone.getNDpackage(["demo"])
         time.sleep(0.5)
         self.drone.takeoff()
@@ -312,6 +442,10 @@ if __name__ == '__main__':
 
     # centering flag
     center_flag = False
+    test_flag = False
+    pid_flag = False
+    x_cnt = 0.0
+    y_cnt = 0.0
 
     while not stop:
         #img = drone.videoImage
@@ -323,6 +457,8 @@ if __name__ == '__main__':
         if key == "0":
             thisDrone.drone.hover()
             center_flag = False
+            test_flag = False
+            pid_flag = False
         elif key == "w":
             thisDrone.drone.moveForward()
         elif key == "s":
@@ -332,14 +468,38 @@ if __name__ == '__main__':
         elif key == "d":
             thisDrone.drone.moveRight()
         elif key == "8":
-            drone.moveUp()
+            thisDrone.drone.moveUp()
         elif key == "2":
-            drone.moveDown()
+            thisDrone.drone.moveDown()
         elif key == "c":
             center_flag = True
         elif key == " ":
             sys.exit()
-	
+        elif key == "t":
+            test_flag = True
+        elif key == "j":
+            x_cnt = x_cnt - 0.1
+            print x_cnt
+        elif key == "l":
+            x_cnt = x_cnt + 0.1
+            print x_cnt
+        elif key == "i":
+            y_cnt = y_cnt + 0.1
+            print y_cnt
+        elif key == "k":
+            y_cnt = y_cnt - 0.1
+            print y_cnt
+        elif key == "p":
+            pid_flag = True
+
+        # test move from keyboard
+        if test_flag:
+            thisDrone.testMove(x_cnt, y_cnt)
+            time.sleep(0.1)
+
+        # pid control
+        if pid_flag:
+            thisDrone.PIDMove()
 
         # center drone on object
         if center_flag:
